@@ -2,6 +2,7 @@ import os
 import time
 import shutil
 import requests
+import multiprocessing
 from pushover import init, Client
 
 
@@ -21,6 +22,32 @@ def file_is_stable(filepath, wait_time):
     return initial_size == later_size
 
 
+def safe_move_file(src, dest, timeout=60):
+    """
+    Move a file from src to dest in a separate process.
+    If the move does not complete within 'timeout' seconds, raise a TimeoutError.
+    """
+    def move_func(src, dest, q):
+        try:
+            shutil.move(src, dest)
+            q.put("success")
+        except Exception as e:
+            q.put(e)
+
+    q = multiprocessing.Queue()
+    p = multiprocessing.Process(target=move_func, args=(src, dest, q))
+    p.start()
+    p.join(timeout)
+    if p.is_alive():
+        p.terminate()
+        p.join()
+        raise TimeoutError(f"Moving file {src} to {dest} timed out after {timeout} seconds")
+    result = q.get()
+    if result != "success":
+        raise result
+    return True
+
+
 def move_completed_files(local_dir, remote_dir, stability_wait, client, selected_devices):
     """
     For each file in local_dir that is stable, attempt to move it to remote_dir.
@@ -31,7 +58,8 @@ def move_completed_files(local_dir, remote_dir, stability_wait, client, selected
         if os.path.isfile(src_path) and file_is_stable(src_path, stability_wait):
             dest_path = os.path.join(remote_dir, filename)
             try:
-                shutil.move(src_path, dest_path)
+                print(f"Moving {filename}...")
+                safe_move_file(src_path, dest_path, timeout=60)
                 print(f"Moved {filename} to {remote_dir}.")
             except Exception as e:
                 error_message = f"Error moving {filename}: {e}"
@@ -57,7 +85,6 @@ def notify_devices(client, devices, message, title="Notification"):
     """
     Send the specified message to each device in devices.
     """
-    print(message)
     for device in devices:
         client.send_message(message, title=title, device=device)
 
@@ -125,29 +152,30 @@ def main():
 
     # --- Main monitoring loop ---
     while True:
-        # Check directory accessibility
         if not disconnected:
             if not os.path.isdir(local_dir):
                 message = f"Error: Local directory ({local_dir}) is no longer accessible."
+                print(message)
                 notify_devices(client, selected_devices, message, title="Local Disconnect")
                 disconnected = True
                 continue
             if not os.path.isdir(remote_dir):
                 message = f"Error: Remote directory ({remote_dir}) has disconnected."
+                print(message)
                 notify_devices(client, selected_devices, message, title="Remote Disconnect")
                 disconnected = True
                 continue
 
             move_completed_files(local_dir, remote_dir, stability_wait, client, selected_devices)
         else:
-            # If previously disconnected, check if both directories are now accessible
+            # If previously disconnected, check if both directories are now accessible.
             if os.path.isdir(local_dir) and os.path.isdir(remote_dir):
                 message = "Good: Directories have reconnected."
+                print(message)
                 notify_devices(client, selected_devices, message, title="Reconnection")
                 disconnected = False
 
         time.sleep(scan_interval)
-
 
 if __name__ == '__main__':
     main()
