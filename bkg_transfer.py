@@ -7,9 +7,7 @@ from pushover import init, Client
 
 
 def file_is_stable(filepath, wait_time):
-    """
-    Check if a file's size remains unchanged over wait_time seconds.
-    """
+    """Check if a file's size remains unchanged over wait_time seconds."""
     try:
         initial_size = os.path.getsize(filepath)
     except OSError:
@@ -22,18 +20,20 @@ def file_is_stable(filepath, wait_time):
     return initial_size == later_size
 
 
+def move_func(src, dest, q):
+    """Top-level helper function for moving a file."""
+    try:
+        shutil.move(src, dest)
+        q.put("success")
+    except Exception as e:
+        q.put(e)
+
+
 def safe_move_file(src, dest, timeout=60):
     """
     Move a file from src to dest in a separate process.
     If the move does not complete within 'timeout' seconds, raise a TimeoutError.
     """
-    def move_func(src, dest, q):
-        try:
-            shutil.move(src, dest)
-            q.put("success")
-        except Exception as e:
-            q.put(e)
-
     q = multiprocessing.Queue()
     p = multiprocessing.Process(target=move_func, args=(src, dest, q))
     p.start()
@@ -65,6 +65,7 @@ def move_completed_files(local_dir, remote_dir, stability_wait, client, selected
                 error_message = f"Error moving {filename}: {e}"
                 print(error_message)
                 notify_devices(client, selected_devices, error_message, title="File Move Error")
+                break
 
 
 def get_devices(app_token, user_key):
@@ -114,8 +115,8 @@ def main():
         return
 
     # --- Pushover credentials and initialization ---
-    app_token = input("Enter your Pushover App Token: ").strip()
-    user_key = input("Enter your Pushover User Key: ").strip()
+    app_token = 'agsvfrtdcnc7iqqwhps89nrgmcya5a'
+    user_key = input("Enter your Pushover User Key (login to pushover.net): ").strip()
 
     init(app_token)
     client = Client(user_key)
@@ -176,6 +177,7 @@ def main():
                 disconnected = False
 
         time.sleep(scan_interval)
+
 
 if __name__ == '__main__':
     main()
