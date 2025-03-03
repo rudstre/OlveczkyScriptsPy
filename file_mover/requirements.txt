@@ -1,0 +1,4 @@
+aiofiles==24.1.0
+psutil==7.0.0
+python_pushover2==0.5
+Requests==2.32.3
