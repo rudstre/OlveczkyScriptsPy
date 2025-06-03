@@ -13,7 +13,6 @@ class FileOperator:
     def __init__(self, config):
         self.dry_run = config["FileMover"].getboolean("dry_run")
         self.verify_checksum = config["FileMover"].getboolean("verify_checksum")
-        self.max_bandwidth = int(config["FileMover"]["max_bandwidth"])  # bytes per second
         self.retry_attempts = 5
         self.backoff_factor = 2
 
@@ -35,24 +34,16 @@ class FileOperator:
             logger.exception(f"Failed to release lock {lock_path}: {e}")
 
     async def _copy_file_with_throttling(self, src: Path, dest: Path):
-        """Copy file in chunks using aiofiles while enforcing maximum bandwidth."""
+        """
+        Copy file in chunks using aiofiles at maximum speed.
+        """
         chunk_size = 64 * 1024  # 64KB
-        start_time = time.time()
-        bytes_copied = 0
-        total_size = src.stat().st_size
         async with aiofiles.open(src, 'rb') as fsrc, aiofiles.open(dest, 'wb') as fdest:
             while True:
                 chunk = await fsrc.read(chunk_size)
                 if not chunk:
                     break
                 await fdest.write(chunk)
-                bytes_copied += len(chunk)
-                elapsed = time.time() - start_time
-                if elapsed > 0:
-                    current_rate = bytes_copied / elapsed
-                    if current_rate > self.max_bandwidth:
-                        sleep_time = (bytes_copied / self.max_bandwidth) - elapsed
-                        await asyncio.sleep(sleep_time)
 
     def _compute_checksum(self, file_path: Path, algorithm: str = "sha256"):
         try:

@@ -21,7 +21,6 @@ DEFAULT_CONFIG = {
     "verify_checksum": "False",
     "health_notification_interval": "3600",
     "notification_rate_limit": "30",
-    "max_bandwidth": "1048576",          # bytes per second (1MB/s default)
     "max_workers": "4"
 }
 

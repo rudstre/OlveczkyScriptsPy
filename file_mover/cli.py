@@ -102,10 +102,6 @@ def interactive_setup():
     verify_checksum = input(f"Enable checksum verification? (y/n) [{section['verify_checksum']}]: ").strip().lower()
     section["verify_checksum"] = "True" if verify_checksum == "y" else "False"
 
-    max_bandwidth = input(f"Max bandwidth (bytes per second) [{section['max_bandwidth']}]: ").strip()
-    if max_bandwidth:
-        section["max_bandwidth"] = max_bandwidth
-
     max_workers = input(f"Max workers [{section['max_workers']}]: ").strip()
     if max_workers:
         section["max_workers"] = max_workers

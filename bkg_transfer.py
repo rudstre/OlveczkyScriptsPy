@@ -16,7 +16,7 @@ logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
         logging.StreamHandler(),
-        logging.FileHandler("file_mover.log")
+        logging.FileHandler("file_mover/file_mover.log")
     ]
 )
 logger = logging.getLogger("FileMover")
