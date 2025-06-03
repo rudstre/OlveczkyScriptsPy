@@ -106,6 +106,10 @@ def interactive_setup():
     if health_interval:
         section["health_notification_interval"] = health_interval
 
+    rate_limit = input(f"Notification rate limit (seconds between messages) [{section['notification_rate_limit']}]: ").strip()
+    if rate_limit:
+        section["notification_rate_limit"] = rate_limit
+
     max_workers = input(f"Max workers [{section['max_workers']}]: ").strip()
     if max_workers:
         section["max_workers"] = max_workers

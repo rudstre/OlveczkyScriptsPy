@@ -36,7 +36,7 @@ class FileMoverApp:
         self.progress_threshold = int(config["FileMover"]["progress_tracking_threshold_bytes"])
         self.last_move_time = datetime.now()
         self.last_health_check = datetime.now()
-        self.health_check_interval = int(config["FileMover"]["health_notification_interval"]) * 3600  # Convert hours to seconds
+        self.health_check_interval = float(config["FileMover"]["health_notification_interval"]) * 3600  # Convert hours to seconds
         
         self.notifier = notifier or NotificationManager(config)
         self.operator = operator or FileOperator(config)
@@ -46,6 +46,7 @@ class FileMoverApp:
         self.total_moved = 0
         self.total_errors = 0
         self.total_bytes_moved = 0
+        self.total_transfer_time = 0.0  # Total time actually spent moving files (seconds)
         self.start_time = datetime.now()
         self.shutdown_requested = False
 
@@ -108,6 +109,7 @@ class FileMoverApp:
             if success:
                 self.total_moved += 1
                 self.total_bytes_moved += file_size
+                self.total_transfer_time += duration  # Add actual transfer time
                 self.last_move_time = datetime.now()
                 
                 if file_size > self.progress_threshold:
@@ -125,13 +127,19 @@ class FileMoverApp:
         if (now - self.last_health_check).total_seconds() >= self.health_check_interval:
             uptime = now - self.start_time
             total_mb = self.total_bytes_moved / (1024 * 1024)
-            avg_speed = total_mb / max(uptime.total_seconds(), 1)  # MB/s
+            
+            # Calculate average speed based only on active transfer time
+            if self.total_transfer_time > 0:
+                avg_speed = total_mb / self.total_transfer_time  # MB/s during actual transfers
+            else:
+                avg_speed = 0.0
             
             health_message = (
                 f"Health Check - Uptime: {uptime}\n"
                 f"Files moved: {self.total_moved}\n"
                 f"Data moved: {total_mb:.1f} MB\n"
-                f"Average speed: {avg_speed:.1f} MB/s\n"
+                f"Average transfer speed: {avg_speed:.1f} MB/s\n"
+                f"Total transfer time: {self.total_transfer_time:.1f}s\n"
                 f"Errors: {self.total_errors}"
             )
             await self.notifier.send_notification(health_message, title="Health Check")
