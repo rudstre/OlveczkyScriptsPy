@@ -36,7 +36,7 @@ class FileMoverApp:
         self.progress_threshold = int(config["FileMover"]["progress_tracking_threshold_bytes"])
         self.last_move_time = datetime.now()
         self.last_health_check = datetime.now()
-        self.health_check_interval = int(config["FileMover"]["health_notification_interval"])
+        self.health_check_interval = int(config["FileMover"]["health_notification_interval"]) * 3600  # Convert hours to seconds
         
         self.notifier = notifier or NotificationManager(config)
         self.operator = operator or FileOperator(config)
@@ -125,13 +125,13 @@ class FileMoverApp:
         if (now - self.last_health_check).total_seconds() >= self.health_check_interval:
             uptime = now - self.start_time
             total_mb = self.total_bytes_moved / (1024 * 1024)
-            avg_speed = total_mb / max(uptime.total_seconds(), 1) * 3600  # MB/hour
+            avg_speed = total_mb / max(uptime.total_seconds(), 1)  # MB/s
             
             health_message = (
                 f"Health Check - Uptime: {uptime}\n"
                 f"Files moved: {self.total_moved}\n"
                 f"Data moved: {total_mb:.1f} MB\n"
-                f"Average speed: {avg_speed:.1f} MB/hour\n"
+                f"Average speed: {avg_speed:.1f} MB/s\n"
                 f"Errors: {self.total_errors}"
             )
             await self.notifier.send_notification(health_message, title="Health Check")

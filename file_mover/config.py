@@ -20,7 +20,7 @@ DEFAULT_CONFIG = {
     "file_filter": ".rhd",                   # Extension (e.g. ".txt") or regex if prefixed with "regex:"
     "progress_tracking_threshold_bytes": "52428800",  # 50MB - files larger than this show progress
     "verify_checksum": "False",          # Enable SHA256 checksum verification
-    "health_notification_interval": "3600",  # Seconds between health check notifications
+    "health_notification_interval": "24",  # Hours between health check notifications
     "notification_rate_limit": "30",     # Minimum seconds between notifications
     "max_workers": "4"                   # Maximum concurrent file operations
 }

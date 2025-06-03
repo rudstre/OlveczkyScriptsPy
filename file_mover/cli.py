@@ -102,7 +102,7 @@ def interactive_setup():
     verify_checksum = input(f"Enable checksum verification? (y/n) [{section['verify_checksum']}]: ").strip().lower()
     section["verify_checksum"] = "True" if verify_checksum == "y" else "False"
 
-    health_interval = input(f"Health check notification interval (seconds) [{section['health_notification_interval']}]: ").strip()
+    health_interval = input(f"Health check notification interval (hours) [{section['health_notification_interval']}]: ").strip()
     if health_interval:
         section["health_notification_interval"] = health_interval
 
