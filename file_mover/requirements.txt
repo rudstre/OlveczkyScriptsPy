@@ -1,4 +1,21 @@
+# Core async file operations
 aiofiles==24.1.0
+
+# System monitoring and resource management  
 psutil==7.0.0
+
+# Notifications
 python_pushover2==0.5
-Requests==2.32.3
+
+# HTTP requests for API calls
+requests==2.32.3
+
+# Development and testing
+pytest==8.0.0
+pytest-asyncio==0.23.0
+
+# Optional: Enhanced logging and monitoring
+structlog==23.2.0
+
+# Optional: Configuration validation
+pydantic==2.5.0

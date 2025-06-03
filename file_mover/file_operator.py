@@ -6,8 +6,21 @@ import random
 from pathlib import Path
 import aiofiles
 import logging
+import shutil
 
 logger = logging.getLogger(__name__)
+
+class FileOperationError(Exception):
+    """Custom exception for file operation errors"""
+    pass
+
+class InsufficientSpaceError(FileOperationError):
+    """Raised when there's insufficient disk space"""
+    pass
+
+class PermissionError(FileOperationError):
+    """Raised when there are permission issues"""
+    pass
 
 class FileOperator:
     def __init__(self, config):
@@ -109,3 +122,12 @@ class FileOperator:
             logger.info(f"Retrying {src} in {backoff:.2f} seconds (attempt {attempt})...")
             await asyncio.sleep(backoff)
         return False
+
+    def _check_disk_space(self, dest_path: Path, file_size: int) -> bool:
+        """Check if there's enough disk space for the file"""
+        try:
+            stat = shutil.disk_usage(dest_path.parent)
+            return stat.free > file_size * 1.1  # 10% buffer
+        except Exception as e:
+            logger.warning(f"Could not check disk space: {e}")
+            return True  # Assume space is available if we can't check

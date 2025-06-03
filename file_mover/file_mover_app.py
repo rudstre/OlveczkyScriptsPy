@@ -1,13 +1,14 @@
 import asyncio
 import os
 import signal
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 import logging
 from configparser import ConfigParser
 from .notification import NotificationManager
 from .file_operator import FileOperator
 from .directory_monitor import DirectoryMonitor
+from .config import validate_config, ConfigValidationError
 
 logger = logging.getLogger(__name__)
 
@@ -20,17 +21,32 @@ class FileMoverApp:
         operator: FileOperator = None,
         monitor: DirectoryMonitor = None,
     ):
+        # Validate configuration before proceeding
+        try:
+            validate_config(config)
+        except ConfigValidationError as e:
+            logger.error(f"Configuration validation failed: {e}")
+            raise
+            
         self.config = config
         self.remote_dir = Path(config["FileMover"]["remote_dir"]).expanduser().resolve()
         self.dry_run = config["FileMover"].getboolean("dry_run")
         self.scan_interval = int(config["FileMover"]["scan_interval"])
         self.inactivity_threshold = int(config["FileMover"]["inactivity_threshold_minutes"]) * 60
+        self.progress_threshold = int(config["FileMover"]["progress_tracking_threshold_bytes"])
         self.last_move_time = datetime.now()
+        self.last_health_check = datetime.now()
+        self.health_check_interval = int(config["FileMover"]["health_notification_interval"])
+        
         self.notifier = notifier or NotificationManager(config)
         self.operator = operator or FileOperator(config)
         self.monitor = monitor or DirectoryMonitor(config)
+        
+        # Statistics tracking
         self.total_moved = 0
         self.total_errors = 0
+        self.total_bytes_moved = 0
+        self.start_time = datetime.now()
         self.shutdown_requested = False
 
         self.configured_max_workers = int(config["FileMover"].get("max_workers", "4"))
@@ -77,15 +93,49 @@ class FileMoverApp:
 
     async def process_file(self, file: Path):
         dest = self.remote_dir / file.name
+        file_size = file.stat().st_size
+        
+        # Log progress for large files
+        if file_size > self.progress_threshold:
+            size_mb = file_size / (1024 * 1024)
+            logger.info(f"Processing large file: {file.name} ({size_mb:.1f} MB)")
+        
         async with self.semaphore:
+            start_time = datetime.now()
             success = await self.operator.move_file_with_retry(file, dest)
+            duration = (datetime.now() - start_time).total_seconds()
+            
             if success:
-                logger.info(f"File {file.name} moved successfully")
                 self.total_moved += 1
+                self.total_bytes_moved += file_size
                 self.last_move_time = datetime.now()
+                
+                if file_size > self.progress_threshold:
+                    speed_mbps = (file_size / (1024 * 1024)) / max(duration, 0.1)
+                    logger.info(f"File {file.name} moved successfully in {duration:.1f}s ({speed_mbps:.1f} MB/s)")
+                else:
+                    logger.info(f"File {file.name} moved successfully in {duration:.1f}s")
             else:
-                logger.error(f"Failed to move file {file.name}")
+                logger.error(f"Failed to move file {file.name} after {duration:.1f}s")
                 self.total_errors += 1
+
+    async def _send_health_check(self):
+        """Send periodic health check notifications"""
+        now = datetime.now()
+        if (now - self.last_health_check).total_seconds() >= self.health_check_interval:
+            uptime = now - self.start_time
+            total_mb = self.total_bytes_moved / (1024 * 1024)
+            avg_speed = total_mb / max(uptime.total_seconds(), 1) * 3600  # MB/hour
+            
+            health_message = (
+                f"Health Check - Uptime: {uptime}\n"
+                f"Files moved: {self.total_moved}\n"
+                f"Data moved: {total_mb:.1f} MB\n"
+                f"Average speed: {avg_speed:.1f} MB/hour\n"
+                f"Errors: {self.total_errors}"
+            )
+            await self.notifier.send_notification(health_message, title="Health Check")
+            self.last_health_check = now
 
     async def run(self):
         logger.info("Starting FileMoverApp")
