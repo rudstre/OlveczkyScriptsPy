@@ -16,6 +16,3 @@ pytest-asyncio==0.23.0
 
 # Optional: Enhanced logging and monitoring
 structlog==23.2.0
-
-# Optional: Configuration validation
-pydantic==2.5.0

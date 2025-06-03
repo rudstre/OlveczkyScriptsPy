@@ -159,6 +159,9 @@ class FileMoverApp:
 
         try:
             while not self.shutdown_requested:
+                # Check if it's time for a health check
+                await self._send_health_check()
+                
                 files = await self.monitor.scan_directory()
                 if files:
                     tasks = [asyncio.create_task(self.process_file(f)) for f in files]

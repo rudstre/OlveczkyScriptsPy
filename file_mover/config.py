@@ -17,7 +17,7 @@ DEFAULT_CONFIG = {
     "pushover_user_key": "",             # Pushover user key (required for notifications)
     "selected_devices": "",              # Comma separated list of device names
     "dry_run": "False",                  # Simulate moves without affecting files
-    "file_filter": "",                   # Extension (e.g. ".txt") or regex if prefixed with "regex:"
+    "file_filter": ".rhd",                   # Extension (e.g. ".txt") or regex if prefixed with "regex:"
     "progress_tracking_threshold_bytes": "52428800",  # 50MB - files larger than this show progress
     "verify_checksum": "False",          # Enable SHA256 checksum verification
     "health_notification_interval": "3600",  # Seconds between health check notifications
